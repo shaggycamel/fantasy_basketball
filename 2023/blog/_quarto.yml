@@ -1,0 +1,19 @@
+project:
+  type: website
+
+website:
+  title: "BB-Blog"
+  navbar:
+    right:
+      - about.qmd
+      - icon: github
+        href: https://github.com/shaggycamel
+      - icon: linkedin
+        href: https://www.linkedin.com/in/oliver-eaton/
+format:
+  html:
+    theme: cosmo
+    css: styles.css
+
+
+
