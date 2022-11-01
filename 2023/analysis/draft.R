@@ -15,26 +15,24 @@
 # Environ -----------------------------------------------------------------
 
 library(plotly)
-source(here::here("data", "data_prep.R"))
+source(here::here("functions", "fn_data.R"))
+source(here::here("data", "useful_objects.R"))
 
 # Raw data ----------------------------------------------------------------
 
-df_draft_raw <- 
-  read_df('PlayerCareerStats.pq') |>
-  filter(team_abbreviation != "TOT") |> 
-  mutate(player_id = as.factor(player_id))
-
+source(here::here("data", "draft_data.R"))
 
 # Avg mins per season -----------------------------------------------------
 
-df_avg_mins <- df_draft_raw |> 
+df_AvgMins <- 
+  df_PlayerCareerStats |> 
   group_by(player_id) |> 
   summarise(season_avg_mins = sum(min) / n_distinct(season_id)) |> 
-  left_join(select(df_players, player_id = person_id, player_slug))
+  left_join(select(df_PlayerInfo, player_id = person_id, player_slug))
 
 # _pct recalc -------------------------------------------------------------
 
-df_draft <- df_draft_raw |> 
+df <- df_PlayerCareerStats |> 
   select(any_of(c(id_cols, tmp_cols, anl_cols))) |> 
   group_by(player_id) |> 
   summarise(across(everything(), ~ sum(.x))) |> 
@@ -42,7 +40,7 @@ df_draft <- df_draft_raw |>
   
   # Player season count
   left_join({
-    group_by(df_draft_raw, player_id) |> 
+    group_by(df_PlayerCareerStats, player_id) |> 
     summarise(season_cnt = n_distinct(season_id))
   }) |> 
   
@@ -54,7 +52,7 @@ df_draft <- df_draft_raw |>
   mutate(across(all_of(anl_cols), ~ .x / min)) |> 
   
   # Position and player name
-  left_join(select(df_players, player_id = person_id, player_slug, position))
+  left_join(select(df_PlayerInfo, player_id = person_id, player_slug, position))
 
 
 
@@ -63,7 +61,7 @@ df_draft <- df_draft_raw |>
 top_x <- 15
 l <- list()
 walk(c("Forward", "Center", "Guard"), ~ {
-   t <- df_draft |> 
+   t <- df |> 
     filter(str_detect(position, .x)) |> 
     pivot_longer(cols = all_of(anl_cols), names_to = "stat") |> 
     group_by(stat)
@@ -75,7 +73,7 @@ walk(c("Forward", "Center", "Guard"), ~ {
    })
 })
 
-l <-ungroup(bind_rows(l, .id = "cat_position")) |> 
+l <- ungroup(bind_rows(l, .id = "cat_position")) |> 
   mutate(pos_cnt = factor(if_else(str_detect(position, ","), 2, 1)))
 
 l_plt <- map(set_names(anl_cols), ~ {
@@ -94,7 +92,7 @@ l_plt <- map(set_names(anl_cols), ~ {
 
 # Position / stat intersection -----------------------------------------
 
-df_intersect <- l |> 
+df_Intersect <- l |> 
   group_by(player_slug, stat) |> 
   slice(1) |> 
   group_by(player_slug) |> 
@@ -106,7 +104,7 @@ df_intersect <- l |>
   distinct() |> 
   filter(stat_cat_cnt >= 5)
 
-df_intersect |> 
+df_Intersect |> 
   ggplot(aes(
     y = fct_reorder(player_slug, stat_cat_cnt)
     , x = stat_cat_cnt
@@ -130,67 +128,3 @@ intersect_plt <- ggplotly(tooltip = "stats") |>
 
 
 
-
-
-
-# Desired order
-# Joel Embiid		              tov, reb, blk, pts *
-# Russell Westbrook		        tov, ast, pts *
-# James Harden		            tov, ast, pts --
-# Trae Young		              tov, ast, pts --
-# Nikola Jokic		            reb, ast, pts --
-# Luka Doncic		              tov, ast, pts --
-# Ja Morant		                tov, ast, pts --
-# LaMelo Ball		              tov, ast, stl *
-# LeBron James		            tov, pts --
-# Karl-Anthony Towns		      reb, pts --
-# Ben Simmons		              tov, ast --
-# Devin Booker		            tov, pts --
-# Dwight Howard		            reb, blk *
-# John Wall		                tov, ast --
-# Rudy Gobert		              reb, blk --
-# Jarrett Allen		            reb, blk --
-# Rajon Rondo		              ast, stl *
-# Clint Capela		            reb, blk *
-# T.J. McConnell		          ast, stl
-# Hassan Whiteside		        reb, blk
-# Nerlens Noel		            stl, blk
-# Michael Carter-Williams		  tov, stl
-# Tyus Jones		              ast, stl
-# Mo Bamba		                reb, blk
-
-      
-# tov     3
-# ast     2       
-# reb     2  
-# blk     2  
-# pts     2     
-# stl     1   
-# fg_pct  0
-# ft_pct  0
-# fg3m    0
-
-
-
-# Scratch
-# Anthony Davis
-# Chet Holmgren
-# Chris Paul
-# Corey Kispert
-# Danilo Gallinari
-# Danny Green
-# DeAndre Jordan
-# E.J. Liddell
-# Eric Bledsoe
-# Jaren Jackson Jr.
-# Joe Ingles
-# Lonzo Ball
-# Marcus Zegarowski
-# Markelle Fultz
-# Matt Thomas
-# Ricky Rubio
-# Robert Williams III
-# Scottie Lewis
-# T.J. Warren
-# Ty Jerome
-# Zion Williamson
