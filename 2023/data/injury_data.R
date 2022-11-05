@@ -1,12 +1,7 @@
 
 
 
-# Season Game Log ---------------------------------------------------------
 
-df_Season <- read_df("PlayerGameLog.pq") |> 
-  mutate(game_date = as.Date(game_date, format = "%B %d, %Y")) |> 
-  group_by(season_id) |> 
-  summarise(season_start = min(game_date), season_end = max(game_date))
 
 
 # Team Game Log -----------------------------------------------------------
