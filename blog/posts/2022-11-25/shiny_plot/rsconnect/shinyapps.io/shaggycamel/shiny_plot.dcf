@@ -1,0 +1,13 @@
+name: shiny_plot
+title: shiny_plot
+username:
+account: shaggycamel
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 7733202
+bundleId: 6555348
+url: https://shaggycamel.shinyapps.io/shiny_plot/
+when: 1669412104.79753
+lastSyncTime: 1669412104.79755
+asMultiple: FALSE
+asStatic: FALSE
