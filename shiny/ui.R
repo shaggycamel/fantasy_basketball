@@ -10,7 +10,8 @@ header <- dashboardHeader(title = "NBA")
 sidebar <- dashboardSidebar(
   sidebarMenu(
     menuItem("Player Overview", tabName = "player_overview", icon = icon("chart-bar")),
-    menuItem("Player Trend", tabName = "player_trend", icon = icon("chart-line"))
+    menuItem("Player Trend", tabName = "player_trend", icon = icon("chart-line")),
+    menuItem("League Game Schedule", tabName = "league_game_schedule", icon = icon("calendar-days"))
   )
 )
     
@@ -48,6 +49,26 @@ body <-
           # Plot
           column(width = 8, plotOutput("player_trend_plot", height = 600)) # unsure how to make height dynamic, as in = "100%"
         )
+      ),
+      
+      # League Game Schedule tab
+      tabItem(tabName = "league_game_schedule",
+        fluidRow(
+          column(
+            width = 4, 
+            selectInput("week_selection", "Week", choices = character(0))
+          ),
+        
+          # Table
+          column(
+            width = 8,
+            box(
+              width = 12,
+              style='height: 600px; overflow-x: scroll; overflow-y: scroll;',
+              tableOutput("schedule_table")
+            )
+          )
+        ) 
       )
     )
   )

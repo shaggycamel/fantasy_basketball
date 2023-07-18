@@ -28,7 +28,7 @@ player_game_log <-
 
 # league_game_schedule** ----------------------------------------------------
 
-# Update schedule:
+# Update schedule using current_schedule() function:
   # beginning of season
   # beginning of playoffs
 # Update instructions:

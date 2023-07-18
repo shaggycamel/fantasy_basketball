@@ -5,8 +5,8 @@ source(here::here("shiny", "init_nba_shiny.R"))
 
 # Server
 server <- function(input, output, session) {
-  
-# Overview Analysis -------------------------------------------------------
+
+# Player Overview Analysis ------------------------------------------------
 
   # Initial query (original dataframe)
   df_overview <- dh_getQuery(postgre_nba_con, "shiny_overview_query.sql") |> 
@@ -69,8 +69,9 @@ server <- function(input, output, session) {
   })
   
 
-# Trend Analysis ----------------------------------------------------------
- 
+
+# Player Trend Analysis ---------------------------------------------------
+
   df_trend <- dh_getQuery(postgre_nba_con, "shiny_trend_query.sql") |> 
     mutate(slug_season = ordered(slug_season)) |> 
     mutate(type_season = ordered(type_season, c("Pre Season", "Regular Season", "Playoffs"))) |> 
@@ -111,4 +112,68 @@ server <- function(input, output, session) {
 
     
   })
+  
+
+# League Game Schedule Analysis -------------------------------------------
+  
+  current_date <- as.Date('2023-01-05') # Change to Sys.Date()
+
+  df_schedule <- dh_getQuery(postgre_nba_con, "shiny_schedule_query.sql") |> 
+    group_by(slug_season) |> 
+    mutate(season_week = if_else(season_week < 30, season_week + 52, season_week)) |> 
+    mutate(season_week = season_week - min(season_week) + 1) |>
+    group_by(season_week) |> 
+    mutate(week_start = min(date_game), week_end = max(date_game)) |> 
+    ungroup()
+  
+  
+  # Update drop box values
+  observe({
+    drop_box_choices <- unique(paste0("Week:", df_schedule$season_week, " (", df_schedule$week_start, " to ", df_schedule$week_end, ")"))
+    updateSelectInput(
+      session, 
+      "week_selection", 
+      choices = drop_box_choices,
+      selected = drop_box_choices[
+        distinct(df_schedule, pick(contains("week"))) |>
+          filter(
+            week_start <= current_date,
+            week_end >= current_date
+          ) |>
+          pull(season_week)
+      ]
+    )
+  })
+  
+  
+  output$schedule_table <- renderTable({
+    
+    # Need to calculate games left this week variable
+    week_game_count <- df_schedule |> 
+      mutate(week_games_remaining = date_game >= current_date) |> 
+      summarise(
+        week_games_remaining = sum(week_games_remaining), 
+        week_games = n(), 
+        .by = c(season_week, week_start, week_end, team)
+      )
+        
+    week_game_count <- week_game_count |> 
+      left_join(
+        select(week_game_count, team, next_week = season_week, following_week_games = week_games),
+        join_by(team, closest(season_week < next_week))
+      ) |> 
+      select(-next_week)
+    
+    week_game_count |> 
+      filter(paste0("Week:", season_week, " (", week_start, " to ", week_end, ")") == input$week_selection) |> 
+      select(team, contains("game")) |> 
+      arrange(desc(week_games_remaining), team)
+    
+  }, striped = TRUE, bordered = TRUE)
+  
+  
+  
 }
+
+
+
