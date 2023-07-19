@@ -9,6 +9,7 @@ header <- dashboardHeader(title = "NBA")
 # Sidebar
 sidebar <- dashboardSidebar(
   sidebarMenu(
+    menuItem("Head to Head", tabName = "head_to_head", icon = icon("chess")),
     menuItem("Player Overview", tabName = "player_overview", icon = icon("chart-bar")),
     menuItem("Player Trend", tabName = "player_trend", icon = icon("chart-line")),
     menuItem("League Game Schedule", tabName = "league_game_schedule", icon = icon("calendar-days"))
@@ -55,13 +56,13 @@ body <-
       tabItem(tabName = "league_game_schedule",
         fluidRow(
           column(
-            width = 4, 
-            selectInput("week_selection", "Week", choices = character(0))
+            width = 3, 
+            selectInput("week_selection", "Week", choices = character(0), selectize = FALSE)
           ),
         
           # Table
           column(
-            width = 8,
+            width = 9,
             box(
               width = 12,
               style='height: 600px; overflow-x: scroll; overflow-y: scroll;',
