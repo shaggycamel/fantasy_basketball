@@ -11,6 +11,7 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     menuItem("Head to Head", tabName = "head_to_head", icon = icon("chess")),
     menuItem("Player Overview", tabName = "player_overview", icon = icon("chart-bar")),
+    menuItem("Player Performance", tabName = "player_performance", icon = icon("basketball")),
     menuItem("Player Trend", tabName = "player_trend", icon = icon("chart-line")),
     menuItem("League Game Schedule", tabName = "league_game_schedule", icon = icon("calendar-days"))
   )
@@ -35,6 +36,20 @@ body <-
         
           # Plot
           column(width = 8, plotlyOutput("player_overview_plot", height = 600)) # unsure how to make height dynamic, as in = "100%"
+        )
+      ),
+      
+      # Player Performance
+      tabItem(tabName = "player_performance",
+        fluidRow(
+          column(
+            width = 2, 
+            radioButtons("date_range_switch", "Range", choices = c("Two Weeks", "One Month")),
+            selectInput("performance_select_player", "Player", multiple = TRUE, choices = character(0))
+          ),
+        
+          # Table
+          column(width = 10, gt_output("player_performance_table"))
         )
       ),
       
@@ -63,11 +78,7 @@ body <-
           # Table
           column(
             width = 9,
-            box(
-              width = 12,
-              style='height: 600px; overflow-x: scroll; overflow-y: scroll;',
-              tableOutput("schedule_table")
-            )
+            gt_output("schedule_table")
           )
         ) 
       )

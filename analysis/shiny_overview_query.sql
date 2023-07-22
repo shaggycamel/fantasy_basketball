@@ -1,7 +1,8 @@
 SELECT 
     slug_season, 
     id_player_nba,
-    FA.PLAYER_ID AS fty_player_id,
+    id_matchup.fty_id,
+    fa.player_status AS free_agent_status,
     name_player,  
     slug_teams_bref,
     slug_position, 
@@ -32,7 +33,7 @@ SELECT
     pct_efg, 
     pct_ft
 FROM nba.player_season_stats AS stats
-LEFT JOIN fty.FREE_AGENTS AS FA ON stats.NAME_PLAYER = FA.PLAYER_NAME
-    AND FA.PLAYER_STATUS = 'ACTIVE'
-WHERE SLUG_SEASON = '2022-23' 
-ORDER BY ID_PLAYER_NBA, SLUG_SEASON  
+LEFT JOIN util.fty_nba_id_matchup AS id_matchup ON stats.id_player_nba = id_matchup.nba_id 
+LEFT JOIN fty.free_agents AS fa ON id_matchup.fty_id = fa.player_id::INT
+WHERE slug_season = '2022-23' 
+ORDER BY id_player_nba, slug_season  

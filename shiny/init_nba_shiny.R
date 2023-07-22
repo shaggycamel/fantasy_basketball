@@ -7,10 +7,13 @@ library(shinydashboard)
 library(shinyWidgets)
 library(rlang)
 library(dplyr)
+library(tidyr)
 library(tidyselect)
 library(purrr)
 library(ggplot2)
 library(plotly)
+library(stringr)
+library(gt)
 
 
 # Database Connections ----------------------------------------------------
@@ -23,7 +26,7 @@ source(here::here("data", "dataHub.R"))
 # Dataframe used to select NBA stats
 stat_selection <- 
   tibble::tribble(
-    ~formatted_name, ~overview_name, ~trend_name,
+    ~formatted_name, ~overview_name, ~log_name,
      "Minutes", "minutes_totals", "minutes",
      "3-pointers", "fg3m_totals", "fg3m",
      "Points", "pts_totals", "pts",
