@@ -22,14 +22,14 @@ postgre_fty_con <- DBI::dbConnect(
   options="-c search_path=fty"
 )
 
-cockroach_con <- DBI::dbConnect(
-  drv = RPostgres::Postgres(),
-  user = db_info$cockroach$user,
-  host = db_info$cockroach$host,
-  port = db_info$cockroach$port,
-  password = db_info$cockroach$password,
-  dbname = db_info$cockroach$database
-)
+# cockroach_con <- DBI::dbConnect(
+#   drv = RPostgres::Postgres(),
+#   user = db_info$cockroach$user,
+#   host = db_info$cockroach$host,
+#   port = db_info$cockroach$port,
+#   password = db_info$cockroach$password,
+#   dbname = db_info$cockroach$database
+# )
 
 
 dh_getQuery <- function(connection, file){

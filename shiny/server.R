@@ -17,15 +17,15 @@ server <- function(input, output, session) {
   
   df_player_log <- dh_getQuery(postgre_nba_con, "shiny_player_log_query.sql") |> 
     mutate(slug_season = ordered(slug_season)) |> 
-    mutate(type_season = ordered(type_season, c("Pre Season", "Regular Season", "Playoffs"))) |> 
-    mutate(year_season_type = forcats::fct_cross(type_season, str_sub(slug_season, start = 6), sep=" "))
+    mutate(season_type = ordered(season_type, c("Pre Season", "Regular Season", "Playoffs"))) |> 
+    mutate(year_season_type = forcats::fct_cross(season_type, str_sub(slug_season, start = 6), sep=" "))
 
   df_schedule <- dh_getQuery(postgre_nba_con, "shiny_schedule_query.sql") |> 
     group_by(slug_season) |> 
     mutate(season_week = if_else(season_week < 30, season_week + 52, season_week)) |> 
     mutate(season_week = season_week - min(season_week) + 1) |>
     group_by(season_week) |> 
-    mutate(week_start = min(date_game), week_end = max(date_game)) |> 
+    mutate(week_start = min(game_date), week_end = max(game_date)) |> 
     ungroup()  
   
 # Player Overview Analysis ------------------------------------------------
@@ -33,7 +33,7 @@ server <- function(input, output, session) {
   
   # Dynamically update filters: select_stat, minute_filter
   observe({
-    updateSliderTextInput(session, "overview_minute_filter", choices = seq(from = max(df_overview$minutes_totals), to = min(df_overview$minutes_totals)), selected = round(quantile(df_overview$minutes_totals)[["75%"]]))
+    updateSliderTextInput(session, "overview_minute_filter", choices = seq(from = max(df_overview$min), to = min(df_overview$min)), selected = round(quantile(df_overview$min)[["75%"]]))
   })
   
   # Code to render plot
@@ -44,38 +44,38 @@ server <- function(input, output, session) {
       else filter(df_overview, free_agent_status == "ACTIVE")
     
     # Minute filter
-    df_overview_plt <- filter(df_overview_plt, minutes_totals >= as.numeric(input$overview_minute_filter))
+    df_overview_plt <- filter(df_overview_plt, min >= as.numeric(input$overview_minute_filter))
     
     # Scale by minutes (if selected)
-    if(input$overview_scale_by_minutes) df_overview_plt <- mutate(df_overview_plt, across(all_of(stat_selection$overview_name), ~ .x / minutes_totals))
+    if(input$overview_scale_by_minutes) df_overview_plt <- mutate(df_overview_plt, across(all_of(stat_selection$database_name), ~ .x / min))
     
     # Create df for plot
-    df_overview_plt <- map(stat_selection$overview_name, ~ {
+    df_overview_plt <- map(stat_selection$database_name, ~ {
       
       col = sym(.x)
       
-      if(col == sym("tov_totals")){
-        slice_max(df_overview_plt, order_by = minutes_totals, prop = 0.35) |> 
-          select(name_player, {{ col }}) |>
+      if(col == sym("tov")){
+        slice_max(df_overview_plt, order_by = min, prop = 0.35) |> 
+          select(player_name, {{ col }}) |>
           arrange({{ col }}) |> 
           slice_head(n = input$overview_slider_top_n) |> 
-          set_names(c("name_player", "value"))
+          set_names(c("player_name", "value"))
       } else {
-        select(df_overview_plt, name_player, {{ col }}) |>
+        select(df_overview_plt, player_name, {{ col }}) |>
           arrange(desc({{ col }})) |> 
           slice_head(n = input$overview_slider_top_n) |> 
-          set_names(c("name_player", "value"))
+          set_names(c("player_name", "value"))
       }
       
     }) |> 
       set_names(stat_selection$formatted_name) |> 
       bind_rows(.id = "stat") |> 
-      mutate(top_cat_count = n(), .by = name_player) |> 
-      mutate(top_cats = paste(stat, collapse = ", "), .by = name_player)
+      mutate(top_cat_count = n(), .by = player_name) |> 
+      mutate(top_cats = paste(stat, collapse = ", "), .by = player_name)
     
     # Stat selection and render plot
     plt <- filter(df_overview_plt, stat == input$overview_select_stat) |> 
-      ggplot(aes(x = value, y = if(input$overview_select_stat == "Turnovers") reorder(name_player, -value) else reorder(name_player, value), fill = ordered(top_cat_count), text = top_cats)) +
+      ggplot(aes(x = value, y = if(input$overview_select_stat == "Turnovers") reorder(player_name, -value) else reorder(player_name, value), fill = ordered(top_cat_count), text = top_cats)) +
       geom_col() +
       guides(fill = guide_legend(title = "Other Category Count", reverse=TRUE)) +
       labs(title = input$overview_select_stat, x = NULL, y = NULL) +
@@ -91,19 +91,19 @@ server <- function(input, output, session) {
 # Uses df_player_log
  
   observe({
-    updateSelectInput(session, "performance_select_player", choices = sort(unique(df_player_log$name_player)))
+    updateSelectInput(session, "performance_select_player", choices = sort(unique(df_player_log$player_name)))
   })
   
   output$player_performance_table <- render_gt({
     
     df_player_log |> 
       filter(
-        date_game <= current_date, 
-        date_game >= current_date - if_else(input$date_range_switch == "Two Weeks", 14, 30)
+        game_date <= current_date, 
+        game_date >= current_date - if_else(input$date_range_switch == "Two Weeks", 14, 30)
       ) |>
-      group_by(id_player, name_player) |> 
+      group_by(player_id, player_name) |> 
       summarise(
-        across(all_of(stat_selection$log_name), ~ round(mean(.x), 2)),
+        across(all_of(stat_selection$database_name), ~ round(mean(.x), 2)),
         across(c(ftm, fta, fgm, fga), ~ sum(.x)),
         .groups = "drop"
       ) |>
@@ -112,28 +112,28 @@ server <- function(input, output, session) {
         inner_join(
           t_df,
           {
-            select(t_df, id_player, name_player, all_of(stat_selection$log_name), -minutes) |> 
-              mutate(across(any_of(stat_selection$log_name[stat_selection$log_name != "tov"]), ~ round(scales::rescale(.x), 2))) |>
+            select(t_df, player_id, player_name, all_of(stat_selection$database_name), -min) |> 
+              mutate(across(any_of(stat_selection$database_name[stat_selection$database_name != "tov"]), ~ round(scales::rescale(.x), 2))) |>
               mutate(tov = round((((tov * -1) - min(tov)) / (max(tov) - min(tov))) + 1, 2)) |>
-              filter(name_player %in% input$performance_select_player) |>  # hopefully filtering out players speeds up process
-              pivot_longer(cols = any_of(stat_selection$log_name), names_to = "stat") |>
+              filter(player_name %in% input$performance_select_player) |>  # hopefully filtering out players speeds up process
+              pivot_longer(cols = any_of(stat_selection$database_name), names_to = "stat") |>
               (\(t_df) {
                 bind_rows(
-                  mutate(slice_max(t_df, value, n = 3, by = c(id_player, name_player), with_ties = FALSE), performance = "Excels At") |> filter(value > 0),
-                  mutate(slice_min(t_df, value, n = 3, by = c(id_player, name_player)), performance = "Weak At")
+                  mutate(slice_max(t_df, value, n = 3, by = c(player_id, player_name), with_ties = FALSE), performance = "Excels At") |> filter(value > 0),
+                  mutate(slice_min(t_df, value, n = 3, by = c(player_id, player_name)), performance = "Weak At")
                 )
               })() |> 
               mutate(stat_value = paste0(stat, " (", value, ")")) |> 
-              group_by(id_player, name_player, performance) |> 
+              group_by(player_id, player_name, performance) |> 
               summarise(stat_value = paste(stat_value, collapse = "<br>"), .groups = "drop") |> 
               pivot_wider(names_from = performance, values_from = stat_value)
           },
-          by = join_by(name_player, id_player)
+          by = join_by(player_name, player_id)
         )
       })() |> 
-      select(name_player, all_of(stat_selection$log_name), ends_with("At")) |> 
-      arrange(name_player) |> 
-      rename(all_of(setNames(stat_selection$log_name, stat_selection$formatted_name)), Player = name_player) |> 
+      select(player_name, all_of(stat_selection$database_name), ends_with("At")) |> 
+      arrange(player_name) |> 
+      rename(all_of(setNames(stat_selection$database_name, stat_selection$formatted_name)), Player = player_name) |> 
       gt() |> 
       tab_header(title = paste("Player Average Performance Over Last", input$date_range_switch)) |>
       sub_missing(missing_text = "0") |> 
@@ -163,26 +163,26 @@ server <- function(input, output, session) {
   season_type_segments <- df_player_log |> 
     group_by(year_season_type) |> 
     summarise(
-      season_type_start = min(date_game), 
-      season_type_end = max(date_game), 
+      season_type_start = min(game_date), 
+      season_type_end = max(game_date), 
       season_type_mid = season_type_start + round((season_type_end - season_type_start) / 2),
       .groups = "drop"
     )
   
   # Update drop box values
   observe({
-    updateSelectInput(session, "trend_select_player", choices = sort(unique(df_player_log$name_player)))
+    updateSelectInput(session, "trend_select_player", choices = sort(unique(df_player_log$player_name)))
   })
   
   # Code to render plot
   output$player_trend_plot <- renderPlot({
     
-    trend_selected_stat <- filter(stat_selection, formatted_name == input$trend_select_stat)$log_name |> 
+    trend_selected_stat <- filter(stat_selection, formatted_name == input$trend_select_stat)$database_name |> 
       str_remove("_totals") |> 
       sym()
     
-    filter(df_player_log, name_player %in% input$trend_select_player) |>
-      ggplot(aes(x = date_game, y = {{ trend_selected_stat }}, colour = name_player)) +
+    filter(df_player_log, player_name %in% input$trend_select_player) |>
+      ggplot(aes(x = game_date, y = {{ trend_selected_stat }}, colour = player_name)) +
       geom_point(alpha = 0.3) +
       geom_line(alpha = 0.3) +
       stat_smooth(na.rm = TRUE, show.legend = FALSE, se = FALSE) +
@@ -225,7 +225,7 @@ server <- function(input, output, session) {
     
     # Calculate games left this week variable
     week_game_count <- df_schedule |> 
-      mutate(week_games_remaining = date_game >= current_date) |> 
+      mutate(week_games_remaining = game_date >= current_date) |> 
       group_by(season_week, week_start, week_end, team) |> 
       summarise(
         week_games_remaining = sum(week_games_remaining), 
@@ -242,13 +242,13 @@ server <- function(input, output, session) {
         
     # Prepare tables to be presented
     tbl_week_games <- df_schedule |> 
-      mutate(date_game = paste0(weekdays(date_game, abbreviate = TRUE), " (", format(date_game, "%m/%d"), ")")) |> 
-      select(slug_season, season_week, date_game, team, against) |> 
+      mutate(game_date = paste0(weekdays(game_date, abbreviate = TRUE), " (", format(game_date, "%m/%d"), ")")) |> 
+      select(slug_season, season_week, game_date, team, against) |> 
       nest_by(slug_season, season_week, .keep = TRUE) |> 
       mutate(data = list(
         pivot_wider(
           data,
-          names_from = date_game,
+          names_from = game_date,
           values_from = against
         ) |> 
         left_join(
@@ -276,21 +276,17 @@ server <- function(input, output, session) {
       ) |> 
       tab_style(
         style = cell_fill(color = "darkseagreen1"),
-        locations = cells_body(columns = `Following Week Games`, rows = `Following Week Games` == max(`Following Week Games`))
+        locations = lapply(
+          c("Following Week Games", "Week Games Remaining"), 
+          \(x) cells_body(columns = !!sym(x), rows = !!sym(x) == max(!!sym(x)))
+        )
       ) |> 
       tab_style(
         style = cell_fill(color = "darkseagreen3"),
-        locations = cells_body(
-        columns = `Following Week Games`, rows = `Following Week Games` == max(`Following Week Games`) - 1)
-      ) |> 
-      tab_style(
-        style = cell_fill(color = "darkseagreen1"),
-        locations = cells_body(columns = `Week Games Remaining`, rows = `Week Games Remaining` == max(`Week Games Remaining`))
-      ) |> 
-      tab_style(
-        style = cell_fill(color = "darkseagreen3"),
-        locations = cells_body(
-        columns = `Week Games Remaining`, rows = `Week Games Remaining` == max(`Week Games Remaining`) - 1)
+        locations = lapply(
+          c("Following Week Games", "Week Games Remaining"), 
+          \(x) cells_body(columns = !!sym(x), rows = !!sym(x) == max(!!sym(x)) - 1)
+        )
       ) |> 
       gtExtras::gt_add_divider(columns = everything(), sides = "all", include_labels = TRUE) |> 
       tab_options(column_labels.background.color = "blue")

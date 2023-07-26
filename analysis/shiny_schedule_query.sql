@@ -1,12 +1,12 @@
 SELECT *,
     REGEXP_REPLACE(REPLACE(SLUG_MATCHUP, team, ''), ' @ | vs. ', '', 'gi') AS against,
-    EXTRACT(week FROM date_game) AS season_week
+    EXTRACT(week FROM GAME_DATE) AS season_week
 FROM (
     SELECT 
         SLUG_SEASON,
         TYPE_SEASON,
-        ID_GAME,
-        date_game,
+        GAME_ID,
+        GAME_DATE,
         SLUG_MATCHUP,
         LEFT(SLUG_MATCHUP, 3) AS team,
         CASE 
@@ -22,8 +22,8 @@ FROM (
     SELECT 
         SLUG_SEASON,
         TYPE_SEASON,
-        ID_GAME,
-        date_game,
+        GAME_ID,
+        GAME_DATE,
         SLUG_MATCHUP,
         RIGHT(SLUG_MATCHUP, 3) AS team,
         CASE 
