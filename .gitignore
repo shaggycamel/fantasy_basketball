@@ -41,3 +41,5 @@ vignettes/*.pdf
 # Quarto blog stuff
 *blog/_site/
 *blog/_freeze
+
+/.quarto/

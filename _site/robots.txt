@@ -1,1 +1,1 @@
-Sitemap: https://quartopub.com/sites/shaggycamel/fantasy-2023/sitemap.xml
+Sitemap: https://shaggycamel-basketball.netlify.app/sitemap.xml

@@ -2,3 +2,6 @@
   quarto-pub:
     - id: 1dfc2846-429b-4a27-827e-1d5ffc06a347
       url: 'https://quartopub.com/sites/shaggycamel/fantasy-2023'
+  netlify:
+    - id: c166522e-4d63-4162-ac42-64d5fbe8b67e
+      url: 'https://shaggycamel-basketball.netlify.app'
